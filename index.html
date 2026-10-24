@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#176b52">
+<title>レシート家計管理</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;color:#17231f;background:#f4f7f5}
+*{box-sizing:border-box}body{margin:0;padding:0 0 env(safe-area-inset-bottom)}header{background:#176b52;color:white;padding:20px 16px 16px;position:sticky;top:0;z-index:5}h1{font-size:21px;margin:0 0 4px}header p{font-size:12px;margin:0;opacity:.9}
+main{max-width:820px;margin:auto;padding:14px}section{background:white;border:1px solid #e0e8e3;border-radius:16px;padding:15px;margin-bottom:13px;box-shadow:0 2px 8px #153d2b0a}
+h2{font-size:17px;margin:0 0 12px}.muted{color:#64736b;font-size:12px;line-height:1.55}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+button,.button{border:0;border-radius:10px;background:#176b52;color:white;font-weight:650;padding:12px 14px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:42px}
+button.secondary,.button.secondary{background:#e7f1ec;color:#145640}button.danger{background:#fff0ed;color:#9d2c1c}button:disabled{opacity:.45}
+input,select,textarea{width:100%;border:1px solid #cbd8d0;border-radius:9px;padding:10px;font:inherit;font-size:14px;background:white;color:#17231f}
+label{display:block;font-size:12px;font-weight:650;color:#506159;margin-bottom:5px}.field{margin-bottom:10px;min-width:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f0f6f2;border-radius:12px;padding:12px 9px}.stat small{display:block;color:#64736b;font-size:11px}.stat strong{display:block;font-size:19px;margin-top:4px;overflow-wrap:anywhere}
+.receipt-card{border:1px solid #e0e8e3;border-radius:12px;padding:12px;margin-top:10px}.receipt-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.receipt-head strong{font-size:14px}.pill{font-size:11px;border-radius:20px;padding:4px 8px;background:#fff2cf;color:#795b00;white-space:nowrap}.pill.ok{background:#e1f4e8;color:#176b52}
+.table-wrap{overflow-x:auto;margin:8px -3px}table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px}th,td{border-bottom:1px solid #e5ebe7;padding:7px 5px;text-align:left;vertical-align:middle}th{background:#f3f7f4;color:#53655b;position:sticky;top:0}td input{min-width:72px;padding:7px 6px;font-size:12px}td input.itemname{min-width:150px}td input.num{min-width:65px}.image-preview{width:100%;max-height:240px;object-fit:contain;background:#f5f5f5;border-radius:10px;margin-top:8px}
+hr{border:0;border-top:1px solid #e3eae5;margin:13px 0}.hidden{display:none!important}.notice{background:#fff8e6;border:1px solid #f0dfaa;color:#644d0b;padding:10px;border-radius:10px;font-size:12px;line-height:1.5}.success{background:#e8f6ed;color:#176b52;padding:10px;border-radius:10px;font-size:12px}.smallbtn{padding:7px 9px;min-height:32px;font-size:12px}
+nav{display:flex;gap:6px;overflow:auto;padding:10px 14px;background:#fff;border-bottom:1px solid #e2e9e4}nav button{white-space:nowrap;min-height:36px;padding:8px 12px}nav button.active{background:#176b52;color:#fff}nav button:not(.active){background:#edf3ef;color:#315344}
+footer{text-align:center;color:#77847d;font-size:11px;padding:8px 20px 24px}
+@media(max-width:440px){main{padding:10px}.grid2{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.stat strong{font-size:17px}section{padding:12px}header{padding-top:17px}}
+</style>
+</head>
+<body>
+<header><h1>レシート家計管理</h1><p>端末内で認識・保存して、Excelに出力</p></header>
+<nav>
+<button class="active" data-tab="home">ホーム</button><button data-tab="capture">撮影・登録</button><button data-tab="history">履歴・明細</button><button data-tab="summary">集計</button><button data-tab="export">Excel出力</button>
+</nav>
+<main>
+<div id="tab-home" class="tab">
+<section><h2>今月の家計</h2><div class="stats"><div class="stat"><small>今月の支払額</small><strong id="homeTotal">¥0</strong></div><div class="stat"><small>レシート</small><strong id="homeReceipts">0枚</strong></div><div class="stat"><small>商品明細</small><strong id="homeItems">0件</strong></div></div><hr><div class="row"><button onclick="switchTab('capture')">＋ レシートを撮影</button><button class="secondary" onclick="switchTab('export')">Excelを書き出す</button></div></section>
+<section><h2>最近のレシート</h2><div id="recentList" class="muted">まだレシートがありません。</div></section>
+<section class="notice"><b>保存について</b><br>データはこのブラウザ内に保存します。Safariの履歴・Webサイトデータを消去すると、保存データが失われる可能性があります。定期的に「Excel出力」と画像バックアップを行ってください。</section>
+</div>
+<div id="tab-capture" class="tab hidden">
+<section><h2>① レシートを撮影・選択</h2>
+<p class="muted">複数枚をまとめて選択できます。iPhoneではカメラ撮影または写真ライブラリを利用できます。撮影後、画像を端末内でOCR処理します。</p>
+<div class="field"><label>レシート画像（複数選択可）</label><input id="images" type="file" accept="image/*" capture="environment" multiple></div>
+<div id="queue" class="muted">画像はまだ選択されていません。</div>
+<div class="row"><button id="ocrBtn" disabled>選択した画像をOCR</button><button class="secondary" id="clearQueue">選択をクリア</button></div>
+<p id="ocrStatus" class="muted"></p>
+<div class="notice" style="margin-top:10px">初回のみOCRエンジンと言語データをインターネットから読み込みます。画像のOCR処理自体はブラウザ内で実行し、レシート画像をOCRサーバーへ送信しません。</div>
+</section>
+<section id="reviewSection" class="hidden"><h2>② 認識結果を確認・修正</h2><p class="muted">OCR結果は誤認識することがあります。商品行・金額・日付を確認してから保存してください。</p>
+<div id="reviewForms"></div><button id="saveAll">確認したレシートを保存</button></section>
+</div>
+<div id="tab-history" class="tab hidden">
+<section><h2>レシート履歴</h2><div class="grid2"><div class="field"><label>年月で絞り込み</label><input id="filterMonth" type="month"></div><div class="field"><label>店舗・商品名で検索</label><input id="searchText" placeholder="例：スーパー、牛乳"></div></div><div id="historyList"></div></section>
+<section id="detailSection" class="hidden"><h2>レシート詳細</h2><div id="detailContent"></div></section>
+</div>
+<div id="tab-summary" class="tab hidden">
+<section><h2>月別集計</h2><div id="monthlySummary"></div></section><section><h2>商品別集計</h2><p class="muted">商品名は文字列が完全一致するものをまとめます。容量・ブランド違いは別の商品名に修正してください。</p><div id="productSummary"></div></section>
+</div>
+<div id="tab-export" class="tab hidden">
+<section><h2>Excel（.xlsx）出力</h2><p class="muted">商品明細・レシート一覧・月別集計・商品別集計の4シートを作成します。</p><div class="field"><label>出力対象</label><select id="exportPeriod"><option value="all">全期間</option><option value="month">指定した月</option></select></div><div class="field hidden" id="exportMonthWrap"><label>対象月</label><input id="exportMonth" type="month"></div><button id="exportBtn">4シートのExcelを生成</button><p id="exportStatus" class="muted"></p><hr><h2>バックアップ</h2><p class="muted">JSONバックアップにはレシート情報・商品明細・画像データを含めます。画像が多い場合はファイルが大きくなります。</p><div class="row"><button class="secondary" id="backupBtn">画像を含めてバックアップ</button><label class="button secondary" for="restoreFile">バックアップを復元</label><input id="restoreFile" class="hidden" type="file" accept="application/json,.json"></div><p class="muted">復元は現在のデータに追加します。重複データにご注意ください。</p></section>
+</div>
+</main><footer>レシート家計管理・試作版 0.1｜個人利用向け</footer>
+<script>
+/* Third-party libraries are loaded from CDNs. OCR itself runs in the browser. */
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const DB_NAME='ReceiptHouseholdDB', STORE='receipts';
+let db, queueFiles=[], drafts=[];
+const yen=n=>'¥'+(Number(n)||0).toLocaleString('ja-JP');
+const todayMonth=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const uid=()=> 'R'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase();
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE,{keyPath:'id'});req.onsuccess=()=>{db=req.result;resolve()};req.onerror=()=>reject(req.error)})}
+function allReceipts(){return new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}
+function putReceipt(item){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+function delReceipt(id){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+function switchTab(name){document.querySelectorAll('.tab').forEach(x=>x.classList.add('hidden'));document.querySelector('#tab-'+name).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));if(name==='home')renderHome();if(name==='history')renderHistory();if(name==='summary')renderSummary()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+function imageData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+document.querySelector('#images').onchange=e=>{queueFiles=[...e.target.files];document.querySelector('#queue').textContent=queueFiles.length?queueFiles.length+'枚選択中：'+queueFiles.map(f=>f.name).join('、'):'画像はまだ選択されていません。';document.querySelector('#ocrBtn').disabled=!queueFiles.length};
+document.querySelector('#clearQueue').onclick=()=>{queueFiles=[];document.querySelector('#images').value='';document.querySelector('#queue').textContent='画像はまだ選択されていません。';document.querySelector('#ocrBtn').disabled=true};
+function parseReceipt(text){
+ const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+ const joined=lines.join('\n');
+ let date='',time='',store='';
+ const dm=joined.match(/(20\d{2})[年\/.\-]\s*(\d{1,2})[月\/.\-]\s*(\d{1,2})日?/);
+ if(dm)date=`${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}`;
+ else {const d2=joined.match(/(\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})/);if(d2)date=`20${d2[1]}-${String(d2[2]).padStart(2,'0')}-${String(d2[3]).padStart(2,'0')}`}
+ const tm=joined.match(/(?:^|\s)([01]?\d|2[0-3]):([0-5]\d)(?:\s|$)/);if(tm)time=String(tm[1]).padStart(2,'0')+':'+tm[2];
+ const storeLine=lines.find(l=>l.length>=2&&!/(合計|小計|税|電話|TEL|レシート|領収|登録番号|担当|日時|お預り|お釣り)/i.test(l)&&!/^[\d\s\-:\/.,¥￥]+$/.test(l));
+ if(storeLine)store=storeLine.slice(0,60);
+ let total=0;for(const l of lines){if(/合計|今回お支払|お買上合計|お支払い合計/.test(l)){const ms=[...l.matchAll(/(?:¥|￥)?\s*([\d,]+)\s*円?/g)];if(ms.length)total=Number(ms[ms.length-1][1].replace(/,/g,''))}}
+ if(!total){for(const l of lines){if(/TOTAL|総合計/i.test(l)){const m=l.match(/([\d,]+)\s*円?/);if(m)total=Number(m[1].replace(/,/g,''))}}}
+ const items=[];
+ const skip=/(小計|合計|消費税|内税|外税|税率|税額|お預り|お預かり|お釣り|釣銭|クレジット|カード|現金|ポイント|値引|割引|TEL|電話|登録番号|レシート|担当|領収|営業時間|〒|http|税込|税抜|TOTAL)/i;
+ for(const l of lines){
+  if(skip.test(l)||l.length<2)continue;
+  // Conservative extraction: a line ending in a plausible price. The price-to-item relationship must be reviewed.
+  const m=l.match(/^(.+?)\s{1,}([¥￥]?\s*[\d,]+)(?:\s*[×xX]\s*(\d+))?$/);
+  const m2=!m?l.match(/^(.+?)(?:\s+|　+)([¥￥]?\s*\d{1,3}(?:,\d{3})+|\d{2,6})(?:\s*[×xX]\s*(\d+))?$/):null;
+  const mm=m||m2;
+  if(mm){let name=mm[1].replace(/[＊*]+/g,'').trim();let price=Number(mm[2].replace(/[¥￥,\s]/g,''));let qty=Number(mm[3]||1);if(name&&name.length<70&&price>=0&&price<10000000)items.push({name,unitPrice:qty>1?Math.round(price/qty):price,quantity:qty,amount:price,discount:0,taxRate:'',taxAmount:'',category:''})}
+ }
+ return {store,date,time,total,subtotal:'',tax:'',payment:'',items,rawText:text,reviewed:false};
+}
+document.querySelector('#ocrBtn').onclick=async()=>{
+ const status=document.querySelector('#ocrStatus');const btn=document.querySelector('#ocrBtn');
+ if(!window.Tesseract){status.textContent='OCRライブラリを読み込めません。インターネット接続を確認してください。';return}
+ btn.disabled=true;drafts=[];status.textContent='OCRエンジンを準備しています…';
+ try{
+  const worker=await Tesseract.createWorker('jpn+eng',1,{logger:m=>{if(m.status)status.textContent='OCR処理中：'+m.status+(m.progress!=null?' '+Math.round(m.progress*100)+'%':'')}});
+  for(let i=0;i<queueFiles.length;i++){
+   status.textContent=`${i+1}/${queueFiles.length}枚目を認識中…`;
+   const file=queueFiles[i],img=await imageData(file),result=await worker.recognize(img);
+   const parsed=parseReceipt(result.data.text);
+   drafts.push({...parsed,id:uid(),image:img,sourceName:file.name,createdAt:new Date().toISOString(),confidence:result.data.confidence||0});
+  }
+  await worker.terminate();renderDrafts();document.querySelector('#reviewSection').classList.remove('hidden');status.textContent=`${drafts.length}枚の認識が終わりました。内容を確認してください。`; 
+ }catch(err){console.error(err);status.textContent='OCRに失敗しました。通信状況を確認し、再度お試しください。'}finally{btn.disabled=false}
+};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderDrafts(){
+ const host=document.querySelector('#reviewForms');host.innerHTML='';
+ drafts.forEach((d,idx)=>{
+  const div=document.createElement('div');div.className='receipt-card';
+  div.innerHTML=`<div class="receipt-head"><strong>${idx+1}. ${esc(d.sourceName)}</strong><span class="pill">要確認</span></div>
+  <img class="image-preview" src="${d.image}" alt="レシート画像">
+  <div class="grid2" style="margin-top:10px">
+  <div class="field"><label>店舗名</label><input data-k="store" value="${esc(d.store)}"></div>
+  <div class="field"><label>購入日</label><input data-k="date" type="date" value="${esc(d.date)}"></div>
+  <div class="field"><label>時刻</label><input data-k="time" type="time" value="${esc(d.time)}"></div>
+  <div class="field"><label>合計支払額（円）</label><input data-k="total" type="number" inputmode="decimal" value="${esc(d.total)}"></div>
+  <div class="field"><label>小計（円）</label><input data-k="subtotal" type="number" value="${esc(d.subtotal)}"></div>
+  <div class="field"><label>消費税（円）</label><input data-k="tax" type="number" value="${esc(d.tax)}"></div>
+  <div class="field"><label>支払方法</label><input data-k="payment" value="${esc(d.payment)}" placeholder="現金・カードなど"></div></div>
+  <h3 style="font-size:14px">商品明細</h3><div class="table-wrap"><table><thead><tr><th>商品名</th><th>単価</th><th>数量</th><th>商品金額</th><th>値引額</th><th>税率</th><th></th></tr></thead><tbody data-items="${idx}"></tbody></table></div>
+  <div class="row"><button class="secondary smallbtn" data-add="${idx}">＋ 商品行</button><button class="danger smallbtn" data-remove="${idx}">このレシートを除外</button></div>
+  <p class="muted">OCR信頼度の目安：${Math.round(d.confidence)}%（文字認識の信頼度であり、金額・商品対応の正確さを保証しません）</p>`;
+  div.querySelectorAll('[data-k]').forEach(inp=>inp.onchange=()=>{let k=inp.dataset.k;d[k]=['total','subtotal','tax'].includes(k)?(inp.value===''?'':Number(inp.value)):inp.value});
+  const tbody=div.querySelector('tbody');
+  const drawItems=()=>{tbody.innerHTML='';d.items.forEach((it,j)=>{const tr=document.createElement('tr');tr.innerHTML=`<td><input class="itemname" data-i="${j}" data-p="name" value="${esc(it.name)}"></td><td><input class="num" type="number" inputmode="decimal" data-i="${j}" data-p="unitPrice" value="${esc(it.unitPrice)}"></td><td><input class="num" type="number" inputmode="decimal" data-i="${j}" data-p="quantity" value="${esc(it.quantity)}"></td><td><input class="num" type="number" inputmode="decimal" data-i="${j}" data-p="amount" value="${esc(it.amount)}"></td><td><input class="num" type="number" data-i="${j}" data-p="discount" value="${esc(it.discount||0)}"></td><td><input class="num" data-i="${j}" data-p="taxRate" value="${esc(it.taxRate||'')}" placeholder="8%"></td><td><button class="danger smallbtn" data-delitem="${j}">削除</button></td>`;tbody.appendChild(tr)});
+   tbody.querySelectorAll('[data-p]').forEach(inp=>inp.onchange=()=>{const it=d.items[Number(inp.dataset.i)],p=inp.dataset.p;it[p]=['unitPrice','quantity','amount','discount'].includes(p)?Number(inp.value):inp.value;if(['unitPrice','quantity'].includes(p)&&p==='quantity'&&it.unitPrice!=='' )it.amount=Number(it.unitPrice)*Number(it.quantity);});
+   tbody.querySelectorAll('[data-delitem]').forEach(b=>b.onclick=()=>{d.items.splice(Number(b.dataset.delitem),1);drawItems()});
+  };drawItems();
+  div.querySelector('[data-add]').onclick=()=>{d.items.push({name:'',unitPrice:0,quantity:1,amount:0,discount:0,taxRate:'',taxAmount:'',category:''});drawItems()};
+  div.querySelector('[data-remove]').onclick=()=>{drafts.splice(idx,1);renderDrafts()};
+  host.appendChild(div);
+ });
+}
+document.querySelector('#saveAll').onclick=async()=>{
+ let saved=0;
+ for(const d of drafts){
+  const receipt={...d,items:d.items.map(it=>({...it,unitPrice:Number(it.unitPrice)||0,quantity:Number(it.quantity)||0,amount:Number(it.amount)||0,discount:Number(it.discount)||0})),reviewed:true};
+  // Duplicate guard: same date/store/total and similar image filename are flagged, not silently discarded.
+  const all=await allReceipts();const dup=all.find(r=>r.date===receipt.date&&r.store===receipt.store&&Number(r.total)===Number(receipt.total)&&receipt.date);
+  if(dup&&!confirm(`${receipt.store||'店舗不明'} / ${receipt.date} / ${yen(receipt.total)} と同じようなレシートが登録済みです。追加しますか？`))continue;
+  await putReceipt(receipt);saved++;
+ }
+ drafts=[];document.querySelector('#reviewForms').innerHTML='';document.querySelector('#reviewSection').classList.add('hidden');document.querySelector('#ocrStatus').textContent=`${saved}枚を保存しました。`;document.querySelector('#images').value='';queueFiles=[];document.querySelector('#queue').textContent='画像はまだ選択されていません。';document.querySelector('#ocrBtn').disabled=true;renderHome();alert(`${saved}枚のレシートを保存しました。`);
+};
+function monthOf(d){return (d.date||'').slice(0,7)}
+function totalPaid(r){return Number(r.total)||0}
+function allItems(receipts){return receipts.flatMap(r=>(r.items||[]).map(it=>({...it,store:r.store,date:r.date,receiptId:r.id,receiptTotal:r.total})))}
+async function renderHome(){const rs=await allReceipts(),m=todayMonth(),current=rs.filter(r=>monthOf(r)===m);document.querySelector('#homeTotal').textContent=yen(current.reduce((s,r)=>s+totalPaid(r),0));document.querySelector('#homeReceipts').textContent=current.length+'枚';document.querySelector('#homeItems').textContent=current.reduce((s,r)=>s+(r.items||[]).length,0)+'件';const host=document.querySelector('#recentList');host.innerHTML=rs.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,5).map(r=>`<div class="receipt-card"><div class="receipt-head"><strong>${esc(r.store||'店舗名未登録')}</strong><span>${yen(r.total)}</span></div><p class="muted">${esc(r.date||'日付不明')} ${esc(r.time||'')} ・ ${(r.items||[]).length}商品</p><button class="secondary smallbtn" onclick="showDetail('${r.id}')">詳細を見る</button></div>`).join('')||'まだレシートがありません。'}
+async function renderHistory(){const rs=await allReceipts(),month=document.querySelector('#filterMonth').value,q=document.querySelector('#searchText').value.toLowerCase();const list=rs.filter(r=>(!month||monthOf(r)===month)&&(!q||[r.store,...(r.items||[]).map(i=>i.name)].join(' ').toLowerCase().includes(q))).sort((a,b)=>(b.date||'').localeCompare(a.date||''));document.querySelector('#historyList').innerHTML=list.map(r=>`<div class="receipt-card"><div class="receipt-head"><strong>${esc(r.store||'店舗名未登録')}</strong><b>${yen(r.total)}</b></div><p class="muted">${esc(r.date||'日付不明')} ${esc(r.time||'')} ・ ${(r.items||[]).length}商品 ${r.reviewed?'<span class="pill ok">確認済み</span>':'<span class="pill">要確認</span>'}</p><div class="row"><button class="secondary smallbtn" onclick="showDetail('${r.id}')">詳細・編集</button><button class="danger smallbtn" onclick="deleteReceipt('${r.id}')">削除</button></div></div>`).join('')||'<p class="muted">該当するレシートはありません。</p>'}
+document.querySelector('#filterMonth').onchange=renderHistory;document.querySelector('#searchText').oninput=renderHistory;
+async function showDetail(id){const rs=await allReceipts(),r=rs.find(x=>x.id===id);if(!r)return;const host=document.querySelector('#detailContent');document.querySelector('#detailSection').classList.remove('hidden');host.innerHTML=`<img class="image-preview" src="${r.image}" alt="保存画像"><div class="grid2"><div class="field"><label>店舗名</label><input id="editStore" value="${esc(r.store)}"></div><div class="field"><label>購入日</label><input id="editDate" type="date" value="${esc(r.date)}"></div><div class="field"><label>時刻</label><input id="editTime" type="time" value="${esc(r.time)}"></div><div class="field"><label>合計支払額</label><input id="editTotal" type="number" value="${esc(r.total)}"></div></div><h3 style="font-size:14px">商品明細</h3><div class="table-wrap"><table><thead><tr><th>商品名</th><th>単価</th><th>数量</th><th>金額</th></tr></thead><tbody>${(r.items||[]).map((it,i)=>`<tr><td><input id="di${i}n" value="${esc(it.name)}"></td><td><input id="di${i}u" type="number" value="${esc(it.unitPrice)}"></td><td><input id="di${i}q" type="number" value="${esc(it.quantity)}"></td><td><input id="di${i}a" type="number" value="${esc(it.amount)}"></td></tr>`).join('')}</tbody></table></div><div class="row"><button id="updateDetail">変更を保存</button><button class="danger" onclick="deleteReceipt('${r.id}')">レシート削除</button></div>`;
+ document.querySelector('#updateDetail').onclick=async()=>{r.store=document.querySelector('#editStore').value;r.date=document.querySelector('#editDate').value;r.time=document.querySelector('#editTime').value;r.total=Number(document.querySelector('#editTotal').value)||0;r.items.forEach((it,i)=>{it.name=document.querySelector('#di'+i+'n').value;it.unitPrice=Number(document.querySelector('#di'+i+'u').value)||0;it.quantity=Number(document.querySelector('#di'+i+'q').value)||0;it.amount=Number(document.querySelector('#di'+i+'a').value)||0});await putReceipt(r);alert('変更を保存しました');renderHistory();renderHome();renderSummary();};
+}
+async function deleteReceipt(id){if(!confirm('このレシートを削除しますか？'))return;await delReceipt(id);document.querySelector('#detailSection').classList.add('hidden');renderHistory();renderHome();renderSummary()}
+function makeTable(headers,rows){return '<div class="table-wrap"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}
+async function renderSummary(){const rs=await allReceipts();const months={};rs.forEach(r=>{const m=monthOf(r)||'日付不明';if(!months[m])months[m]={count:0,total:0,items:0};months[m].count++;months[m].total+=totalPaid(r);months[m].items+=(r.items||[]).length});const mrows=Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,v])=>[m,v.count,yen(v.total),v.items]);document.querySelector('#monthlySummary').innerHTML=mrows.length?makeTable(['年月','レシート枚数','合計支払額','商品明細数'],mrows):'<p class="muted">データがありません。</p>';const prod={};allItems(rs).forEach(it=>{const n=it.name?.trim()||'(商品名未登録)';if(!prod[n])prod[n]={qty:0,amount:0,count:0,prices:[]};prod[n].qty+=Number(it.quantity)||0;prod[n].amount+=Number(it.amount)||0;prod[n].count++;if(Number(it.unitPrice)>0)prod[n].prices.push(Number(it.unitPrice))});const prows=Object.entries(prod).sort((a,b)=>b[1].amount-a[1].amount).map(([n,v])=>[n,v.count,v.qty,yen(v.amount),v.prices.length?yen(Math.round(v.prices.reduce((a,b)=>a+b,0)/v.prices.length)):'']);document.querySelector('#productSummary').innerHTML=prows.length?makeTable(['商品名','明細行数','購入数量','商品金額合計','平均単価'],prows):'<p class="muted">データがありません。</p>'}
+document.querySelector('#exportPeriod').onchange=()=>document.querySelector('#exportMonthWrap').classList.toggle('hidden',document.querySelector('#exportPeriod').value!=='month');
+function excelDownload(wb,name){const bytes=XLSX.write(wb,{bookType:'xlsx',type:'array'});const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+document.querySelector('#exportBtn').onclick=async()=>{
+ const status=document.querySelector('#exportStatus');if(!window.XLSX){status.textContent='Excelライブラリが読み込めません。インターネット接続を確認してください。';return}
+ let rs=await allReceipts();const period=document.querySelector('#exportPeriod').value,month=document.querySelector('#exportMonth').value;if(period==='month'&&!month){status.textContent='対象月を選択してください。';return}if(period==='month')rs=rs.filter(r=>monthOf(r)===month);
+ const wb=XLSX.utils.book_new();
+ const detail=[['レシートID','購入日','購入時刻','店舗名','商品名（原文）','商品名（統一）','単価（円）','数量','商品金額（円）','値引額（円）','税率','税額（円）','支払方法','画像ファイル名','確認状態']];
+ rs.forEach(r=>(r.items||[]).forEach(it=>detail.push([r.id,r.date,r.time,r.store,it.name,it.productName||it.name,it.unitPrice,it.quantity,it.amount,it.discount||0,it.taxRate||'',it.taxAmount||'',r.payment,r.sourceName||r.id+'.jpg',r.reviewed?'確認済み':'要確認'])));
+ const receipts=[['レシートID','購入日','購入時刻','店舗名','小計（円）','消費税（円）','合計支払額（円）','支払方法','画像ファイル名','確認状態','OCR生テキスト']];
+ rs.forEach(r=>receipts.push([r.id,r.date,r.time,r.store,r.subtotal,r.tax,r.total,r.payment,r.sourceName||r.id+'.jpg',r.reviewed?'確認済み':'要確認',r.rawText||'']));
+ const months={};rs.forEach(r=>{const m=monthOf(r)||'日付不明';if(!months[m])months[m]={count:0,total:0,itemAmount:0};months[m].count++;months[m].total+=totalPaid(r);months[m].itemAmount+=(r.items||[]).reduce((s,it)=>s+(Number(it.amount)||0),0)});
+ const monthRows=[['年月','レシート枚数','商品金額合計（円）','合計支払額（円）']];Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([m,v])=>monthRows.push([m,v.count,v.itemAmount,v.total]));
+ const products={};rs.forEach(r=>(r.items||[]).forEach(it=>{const n=(it.productName||it.name||'').trim()||'(商品名未登録)';if(!products[n])products[n]={count:0,qty:0,amount:0,prices:[]};products[n].count++;products[n].qty+=Number(it.quantity)||0;products[n].amount+=Number(it.amount)||0;if(Number(it.unitPrice)>0)products[n].prices.push(Number(it.unitPrice))}));
+ const prodRows=[['商品名','購入明細行数','購入数量','商品金額合計（円）','平均単価（円）']];Object.entries(products).sort((a,b)=>a[0].localeCompare(b[0],'ja')).forEach(([n,v])=>prodRows.push([n,v.count,v.qty,v.amount,v.prices.length?Math.round(v.prices.reduce((a,b)=>a+b,0)/v.prices.length):'']));
+ [[detail,'商品明細'],[receipts,'レシート一覧'],[monthRows,'月別集計'],[prodRows,'商品別集計']].forEach(([rows,name])=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[0].map((h,i)=>({wch:Math.min(28,Math.max(12,String(h).length+3))}));XLSX.utils.book_append_sheet(wb,ws,name)});
+ const file='レシート家計管理_'+(period==='month'?month:'全期間')+'.xlsx';excelDownload(wb,file);status.textContent=`${file} を生成しました。Safariのダウンロード先を確認してください。`;
+};
+document.querySelector('#backupBtn').onclick=async()=>{const rs=await allReceipts();const blob=new Blob([JSON.stringify({app:'ReceiptHousehold',version:1,exportedAt:new Date().toISOString(),receipts:rs})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='レシート家計管理バックアップ_'+todayMonth()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000)};
+document.querySelector('#restoreFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!Array.isArray(data.receipts))throw Error('形式が違います');for(const r of data.receipts)await putReceipt(r);alert(data.receipts.length+'件を追加しました');renderHome();renderHistory();renderSummary()}catch(err){alert('復元できませんでした：'+err.message)}e.target.value=''};
+(async()=>{try{await openDB();document.querySelector('#exportMonth').value=todayMonth();document.querySelector('#filterMonth').value='';await renderHome();await renderSummary()}catch(e){alert('この環境ではローカルデータベースを利用できません。Safariで開いているか確認してください。')}})();
+</script>
+</body></html>
